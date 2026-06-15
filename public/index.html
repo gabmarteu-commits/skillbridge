@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkillBridge — Claude Skills → Any AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#030712; --bg2:#0A0F1E; --cyan:#00D4FF; --purple:#A855F7; --text:#F8FAFC; --muted:#94A3B8; --dim:#64748B; --border:rgba(255,255,255,0.06); }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); line-height:1.6; -webkit-font-smoothing:antialiased; }
+    ::selection { background:rgba(0,212,255,0.3); }
+    code,pre,.mono { font-family:'JetBrains Mono',monospace !important; }
+
+    nav { position:fixed; top:0; left:0; right:0; z-index:100; height:60px; background:rgba(3,7,18,0.9); backdrop-filter:blur(20px); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; padding:0 24px; }
+    nav .logo { font-weight:700; font-size:18px; display:flex; align-items:center; gap:8px; color:var(--text); text-decoration:none; }
+    nav .logo span { color:var(--cyan); }
+    nav .links { display:flex; gap:20px; align-items:center; }
+    nav a { color:var(--muted); text-decoration:none; font-size:14px; font-weight:500; transition:color .2s; }
+    nav a:hover, nav a.active { color:var(--cyan); }
+    nav .right { display:flex; gap:10px; align-items:center; }
+    .btn-lang { padding:6px 12px; border-radius:8px; border:1px solid var(--border); background:rgba(255,255,255,0.03); color:var(--muted); font-size:12px; cursor:pointer; transition:all .2s; }
+    .btn-lang:hover { border-color:var(--cyan); color:var(--cyan); }
+    .btn-primary { padding:8px 18px; border-radius:8px; background:linear-gradient(135deg,var(--cyan),var(--purple)); color:#fff; font-size:13px; font-weight:600; text-decoration:none; border:none; cursor:pointer; transition:opacity .2s; }
+    .btn-primary:hover { opacity:0.9; }
+    .btn-sm { padding:6px 14px; border-radius:8px; border:1px solid var(--border); background:rgba(255,255,255,0.03); color:var(--muted); font-size:12px; cursor:pointer; transition:all .2s; }
+    .btn-sm:hover { border-color:var(--purple); color:var(--purple); }
+    .btn-dl { padding:6px 14px; border-radius:8px; border:1px solid var(--border); background:rgba(0,212,255,0.05); color:var(--cyan); font-size:12px; cursor:pointer; transition:all .2s; text-decoration:none; display:inline-flex; align-items:center; gap:4px; }
+    .btn-dl:hover { border-color:var(--cyan); background:rgba(0,212,255,0.1); }
+
+    .hero { text-align:center; padding:120px 24px 60px; background:linear-gradient(135deg,#030712 0%,#0A0F1E 50%,#111827 100%); }
+    .hero .badge { display:inline-block; padding:4px 12px; border-radius:20px; background:rgba(0,212,255,0.1); color:var(--cyan); font-size:11px; font-weight:600; letter-spacing:1px; margin-bottom:20px; }
+    .hero h1 { font-size:clamp(32px,5vw,56px); font-weight:700; margin-bottom:16px; line-height:1.2; }
+    .hero h1 .gradient { background:linear-gradient(135deg,var(--cyan),var(--purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+    .hero p { color:var(--muted); font-size:18px; max-width:600px; margin:0 auto 32px; }
+    .hero-buttons { display:flex; gap:16px; justify-content:center; flex-wrap:wrap; }
+    .btn-secondary { padding:10px 24px; border-radius:8px; border:1px solid var(--border); background:rgba(255,255,255,0.03); color:var(--text); font-size:14px; text-decoration:none; transition:all .2s; }
+    .btn-secondary:hover { background:rgba(255,255,255,0.08); }
+
+    section { padding:48px 24px; max-width:1100px; margin:0 auto; }
+    .section-title { text-align:center; margin-bottom:32px; }
+    .section-title .label { font-size:11px; color:var(--dim); letter-spacing:2px; text-transform:uppercase; margin-bottom:8px; }
+    .section-title h2 { font-size:28px; font-weight:700; margin-bottom:8px; }
+    .section-title p { color:var(--muted); font-size:15px; }
+
+    .converter-box { border:1px solid var(--border); border-radius:16px; background:rgba(10,15,30,0.6); overflow:hidden; }
+    .converter-toolbar { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid var(--border); flex-wrap:wrap; gap:8px; }
+    .converter-toolbar .left, .converter-toolbar .right { display:flex; gap:12px; align-items:center; }
+    .converter-toolbar span { font-size:12px; color:var(--cyan); font-weight:600; }
+    .converter-toolbar .right span { color:var(--purple); }
+    .converter-toolbar button { font-size:12px; color:var(--dim); background:none; border:none; cursor:pointer; display:flex; align-items:center; gap:4px; transition:color .2s; }
+    .converter-toolbar button:hover { color:var(--text); }
+
+    .github-loader { padding:16px; border-bottom:1px solid var(--border); background:rgba(0,212,255,0.02); }
+    .github-loader-header { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+    .github-loader-header .icon { width:32px; height:32px; border-radius:8px; background:rgba(0,212,255,0.1); display:flex; align-items:center; justify-content:center; font-size:16px; }
+    .github-loader h4 { font-size:14px; margin-bottom:2px; }
+    .github-loader p { font-size:12px; color:var(--muted); margin-bottom:10px; }
+    .github-input-row { display:flex; gap:8px; }
+    .github-input-row input { flex:1; padding:10px 14px; border-radius:8px; border:1px solid var(--border); background:#111827; color:var(--text); font-size:13px; outline:none; }
+    .github-input-row input:focus { border-color:var(--cyan); }
+    .github-input-row input::placeholder { color:#484F58; }
+    .github-loader .supported { font-size:10px; color:var(--dim); margin-top:8px; }
+    .github-loader .error { font-size:12px; color:#ef4444; margin-top:8px; padding:8px; border-radius:6px; background:rgba(239,68,68,0.05); border:1px solid rgba(239,68,68,0.1); }
+    .github-loader .success { font-size:12px; color:#22c55e; margin-top:8px; }
+
+    .panels { display:grid; grid-template-columns:1fr 1fr; min-height:380px; }
+    @media (max-width:768px) { .panels { grid-template-columns:1fr; } }
+    .panel { display:flex; flex-direction:column; }
+    .panel:first-child { border-right:1px solid var(--border); }
+    @media (max-width:768px) { .panel:first-child { border-right:none; border-bottom:1px solid var(--border); } }
+    .panel-header { padding:10px 16px; border-bottom:1px solid var(--border); font-size:11px; color:var(--dim); font-weight:600; letter-spacing:1px; }
+    .panel-header.kimi { color:var(--purple); }
+    textarea { flex:1; background:#0D1117; border:none; padding:16px; color:#E2E8F0; font-size:13px; line-height:1.7; resize:none; outline:none; }
+    textarea::placeholder { color:#484F58; }
+    textarea[readonly] { cursor:default; }
+
+    .presets { padding:12px 16px; border-top:1px solid var(--border); display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .presets-label { font-size:11px; color:var(--dim); margin-right:4px; }
+    .preset-chip { padding:5px 12px; border-radius:20px; background:rgba(0,212,255,0.08); color:var(--cyan); border:1px solid rgba(0,212,255,0.15); font-size:12px; cursor:pointer; transition:all .2s; }
+    .preset-chip:hover { background:rgba(0,212,255,0.15); }
+    .stats-bar { display:grid; grid-template-columns:1fr 1fr 1fr; padding:12px 16px; border-top:1px solid var(--border); text-align:center; }
+    .stats-bar .stat-label { font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:1px; }
+    .stats-bar .stat-value { font-size:18px; font-weight:700; }
+
+    .target-row { display:flex; justify-content:center; padding:12px 16px; border-bottom:1px solid var(--border); gap:8px; flex-wrap:wrap; }
+    .target-row select { padding:8px 16px; border-radius:8px; border:1px solid var(--border); background:#111827; color:var(--text); font-size:13px; outline:none; cursor:pointer; }
+
+    .card-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; }
+    .card { padding:20px; border-radius:12px; border:1px solid var(--border); background:rgba(255,255,255,0.02); transition:all .2s; }
+    .card:hover { border-color:rgba(0,212,255,0.2); background:rgba(255,255,255,0.04); }
+    .card h3 { font-size:15px; margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+    .card p { font-size:13px; color:var(--muted); }
+
+    .repo-row { display:flex; align-items:center; gap:12px; padding:14px 16px; border-radius:12px; border:1px solid var(--border); background:rgba(255,255,255,0.02); margin-bottom:8px; transition:all .2s; }
+    .repo-row:hover { border-color:rgba(0,212,255,0.2); }
+    .repo-rank { width:32px; height:32px; border-radius:8px; background:rgba(0,212,255,0.08); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:var(--cyan); flex-shrink:0; }
+    .repo-rank.gold { background:rgba(245,158,11,0.1); color:#F59E0B; }
+    .repo-rank.silver { background:rgba(156,163,175,0.1); color:#9CA3AF; }
+    .repo-rank.bronze { background:rgba(249,115,22,0.1); color:#F97316; }
+    .repo-info { flex:1; min-width:0; }
+    .repo-info a { color:var(--text); text-decoration:none; font-size:14px; font-weight:600; }
+    .repo-info a:hover { color:var(--cyan); }
+    .repo-info p { font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .repo-stats { display:flex; gap:16px; font-size:12px; color:var(--muted); flex-shrink:0; }
+    .repo-actions { display:flex; gap:6px; flex-shrink:0; }
+
+    .tabs { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:24px; }
+    .tab { padding:8px 16px; border-radius:8px; border:1px solid var(--border); background:rgba(255,255,255,0.02); color:var(--muted); font-size:13px; cursor:pointer; transition:all .2s; display:flex; align-items:center; gap:6px; }
+    .tab:hover { color:var(--text); }
+    .tab.active { color:var(--text); border-color:rgba(0,212,255,0.3); background:rgba(0,212,255,0.05); }
+    .tab-content { border:1px solid var(--border); border-radius:16px; padding:24px; background:rgba(255,255,255,0.02); }
+    .step { display:flex; gap:16px; margin-bottom:20px; }
+    .step-num { width:28px; height:28px; border-radius:50%; background:rgba(0,212,255,0.1); color:var(--cyan); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0; }
+    .step-content h4 { font-size:14px; margin-bottom:4px; }
+    .step-content p { font-size:12px; color:var(--muted); margin-bottom:8px; }
+    .code-block { position:relative; background:#0D1117; border:1px solid var(--border); border-radius:8px; padding:12px 16px; font-size:12px; overflow-x:auto; }
+    .code-block button { position:absolute; top:8px; right:8px; font-size:11px; color:var(--dim); background:none; border:none; cursor:pointer; }
+    .code-block button:hover { color:var(--cyan); }
+
+    footer { border-top:1px solid var(--border); padding:40px 24px; margin-top:40px; background:var(--bg2); }
+    footer .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:24px; max-width:1100px; margin:0 auto; }
+    footer h4 { font-size:13px; margin-bottom:12px; color:var(--text); }
+    footer a { display:block; color:var(--muted); text-decoration:none; font-size:13px; margin-bottom:8px; transition:color .2s; }
+    footer a:hover { color:var(--cyan); }
+    footer .bottom { max-width:1100px; margin:24px auto 0; padding-top:24px; border-top:1px solid var(--border); display:flex; justify-content:space-between; font-size:12px; color:var(--dim); }
+
+    .toast { position:fixed; bottom:20px; right:20px; padding:12px 20px; border-radius:10px; font-size:13px; z-index:200; animation:slideIn .3s ease; }
+    .toast.error { background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); color:#ef4444; }
+    .toast.success { background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.2); color:#22c55e; }
+    @keyframes slideIn { from { transform:translateY(20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+
+    .spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(0,212,255,0.2); border-top-color:var(--cyan); border-radius:50%; animation:spin 0.8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    .hidden { display:none !important; }
+    .center { text-align:center; }
+    .muted { color:var(--muted); }
+    .small { font-size:12px; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="#" class="logo">↔ <span>SkillBridge</span></a>
+    <div class="links">
+      <a href="#converter" data-t="navConverter">Convertidor</a>
+      <a href="#how-it-works" data-t="navHow">Cómo Funciona</a>
+      <a href="#top10" data-t="navTop10">Top 10</a>
+      <a href="#install" data-t="navInstall">Instalación</a>
+    </div>
+    <div class="right">
+      <button class="btn-lang" onclick="toggleLang()" id="langBtn">EN</button>
+      <a href="#converter" class="btn-primary" data-t="navTry">Probar</a>
+    </div>
+  </nav>
+
+  <div class="hero">
+    <div class="badge" data-t="heroBadge">HERRAMIENTA GRATUITA</div>
+    <h1 data-t="heroTitle">Convertí Skills de Claude a <span class="gradient">Kimi</span></h1>
+    <p data-t="heroSub">Transformá tus skills de CLAUDE.md a cualquier formato compatible. Pegá, convertí, descargá — listo en segundos.</p>
+    <div class="hero-buttons">
+      <a href="#converter" class="btn-primary" data-t="heroStart">Empezar a Convertir →</a>
+      <a href="#top10" class="btn-secondary" data-t="heroExamples">Ver Top 10 Skills</a>
+    </div>
+  </div>
+
+  <section id="converter">
+    <div class="section-title">
+      <div class="label" data-t="convLabel">CONVERTIDOR</div>
+      <h2 data-t="convTitle">Pegá tu CLAUDE.md</h2>
+      <p data-t="convSub">Mirá cómo se transforma al formato de tu IA elegido al instante</p>
+    </div>
+
+    <div class="converter-box">
+      <div class="target-row">
+        <label data-t="convTarget">Convertir a:</label>
+        <select id="targetSelect" onchange="onTargetChange()">
+          <option value="kimi">Kimi (Moonshot AI) — SKILL.md</option>
+          <option value="anthropic">Anthropic (Claude) — CLAUDE.md</option>
+          <option value="cursor">Cursor IDE — .cursorrules</option>
+          <option value="codeium">Codeium / Windsurf — SKILL.md</option>
+          <option value="custom">Custom / Generic — SKILL.md</option>
+        </select>
+      </div>
+
+      <div class="github-loader">
+        <div class="github-loader-header">
+          <div class="icon">🐙</div>
+          <div>
+            <h4 data-t="ghTitle">Cargar desde GitHub</h4>
+            <p class="small muted" data-t="ghDesc">Pegá una URL de GitHub para cargar su CLAUDE.md automáticamente</p>
+          </div>
+        </div>
+        <div class="github-input-row">
+          <input type="text" id="githubUrl" placeholder="github.com/obra/superpowers o obra/superpowers" onkeydown="if(event.key==='Enter')loadFromGithub()">
+          <button class="btn-primary" onclick="loadFromGithub()" id="ghLoadBtn" data-t="ghLoad">Cargar</button>
+        </div>
+        <div class="supported" data-t="ghSupport">Soporta: CLAUDE.md, claude.md, .cursorrules, skills/CLAUDE.md, docs/CLAUDE.md, SKILL.md</div>
+        <div id="githubError" class="error hidden"></div>
+        <div id="githubSuccess" class="success hidden"></div>
+      </div>
+
+      <div class="converter-toolbar">
+        <div class="left">
+          <span>CLAUDE.md</span>
+          <button onclick="clearInput()">🗑 <span data-t="btnClear">Limpiar</span></button>
+        </div>
+        <div class="right">
+          <span id="outputFormat">SKILL.md</span>
+          <button onclick="copyOutput()">📋 <span data-t="btnCopy">Copiar</span></button>
+          <button onclick="downloadOutput()">⬇ <span data-t="btnDownload">Descargar</span></button>
+        </div>
+      </div>
+
+      <div class="panels">
+        <div class="panel">
+          <div class="panel-header">INPUT — CLAUDE.md</div>
+          <textarea id="input" placeholder="# Pegá tu skill de Claude acá..." oninput="onInput()"></textarea>
+        </div>
+        <div class="panel">
+          <div class="panel-header kimi">OUTPUT — <span id="outputLabel">SKILL.md</span></div>
+          <textarea id="output" readonly placeholder="El resultado convertido aparecerá acá..."></textarea>
+        </div>
+      </div>
+
+      <div class="presets">
+        <span class="presets-label" data-t="presetsLabel">Presets:</span>
+        <span class="preset-chip" onclick="loadPreset('karpathy')">Karpathy Guidelines</span>
+        <span class="preset-chip" onclick="loadPreset('tdd')">Superpowers TDD</span>
+        <span class="preset-chip" onclick="loadPreset('creator')">Skill Creator</span>
+      </div>
+
+      <div class="stats-bar">
+        <div><div class="stat-label" data-t="statOrig">Original</div><div class="stat-value" id="statOrig">0</div></div>
+        <div><div class="stat-label" data-t="statConv">Convertido</div><div class="stat-value" id="statConv" style="color:var(--cyan)">0</div></div>
+        <div><div class="stat-label" data-t="statSec">Secciones</div><div class="stat-value" id="statSec" style="color:var(--purple)">0</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how-it-works">
+    <div class="section-title">
+      <div class="label" style="color:var(--purple)">GUÍA</div>
+      <h2 data-t="howTitle">Cómo Funciona</h2>
+      <p data-t="howSub">3 formas de convertir tus skills de Claude</p>
+    </div>
+    <div class="card-grid">
+      <div class="card">
+        <h3>1️⃣ <span data-t="how1Title">Pegar texto</span></h3>
+        <p data-t="how1Desc">Copiá el contenido de un CLAUDE.md y pegalo directamente en el convertidor. La conversión es instantánea.</p>
+      </div>
+      <div class="card">
+        <h3>2️⃣ <span data-t="how2Title">URL de GitHub</span></h3>
+        <p data-t="how2Desc">Pegá github.com/owner/repo y tocá "Cargar". Nuestro servidor descarga y convierte automáticamente (sin errores CORS).</p>
+      </div>
+      <div class="card">
+        <h3>3️⃣ <span data-t="how3Title">Presets incluidos</span></h3>
+        <p data-t="how3Desc">Tocá cualquier preset (Karpathy, TDD, Skill Creator) para cargarlo y convertirlo al instante.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="top10">
+    <div class="section-title">
+      <div class="label" style="color:#F59E0B">🏆 TOP 10</div>
+      <h2 data-t="top10Title">Repositorios Más Populares</h2>
+      <p data-t="top10Sub">Skills de Claude con más estrellas en GitHub. Tocá "Convertir" para transformarlos.</p>
+    </div>
+    <div id="top10list"></div>
+  </section>
+
+  <section id="install">
+    <div class="section-title">
+      <div class="label" style="color:var(--cyan)">📖 INSTALACIÓN</div>
+      <h2 data-t="installTitle">Cómo Instalar el Skill en tu IA</h2>
+      <p data-t="installSub">Guías paso a paso para cada plataforma</p>
+    </div>
+    <div class="tabs" id="installTabs"></div>
+    <div class="tab-content" id="installContent"></div>
+  </section>
+
+  <footer>
+    <div class="grid">
+      <div>
+        <h4>SkillBridge</h4>
+        <p class="small muted" data-t="footerTag">Convertí skills de IA entre plataformas. Gratuito y open source.</p>
+      </div>
+      <div>
+        <h4 data-t="footerProduct">Producto</h4>
+        <a href="#converter" data-t="footerConv">Convertidor</a>
+        <a href="#top10" data-t="footerTop10">Top 10</a>
+        <a href="#install" data-t="footerInstall">Instalación</a>
+      </div>
+      <div>
+        <h4 data-t="footerResources">Recursos</h4>
+        <a href="https://github.com/gabmarteu-commits/skillbridge" target="_blank">GitHub ↗</a>
+        <a href="https://github.com/ComposioHQ/awesome-claude-skills" target="_blank">Awesome Claude Skills ↗</a>
+      </div>
+    </div>
+    <div class="bottom">
+      <span>© 2025 SkillBridge</span>
+      <span>Built with ♥ for the AI community</span>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
