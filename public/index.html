@@ -29,6 +29,8 @@
     .btn-sm:hover { border-color:var(--purple); color:var(--purple); }
     .btn-dl { padding:6px 14px; border-radius:8px; border:1px solid var(--border); background:rgba(0,212,255,0.05); color:var(--cyan); font-size:12px; cursor:pointer; transition:all .2s; text-decoration:none; display:inline-flex; align-items:center; gap:4px; }
     .btn-dl:hover { border-color:var(--cyan); background:rgba(0,212,255,0.1); }
+    .btn-load { padding:6px 14px; border-radius:8px; border:1px solid var(--border); background:rgba(168,85,247,0.05); color:var(--purple); font-size:12px; cursor:pointer; transition:all .2s; display:inline-flex; align-items:center; gap:4px; }
+    .btn-load:hover { border-color:var(--purple); background:rgba(168,85,247,0.1); }
 
     .hero { text-align:center; padding:120px 24px 60px; background:linear-gradient(135deg,#030712 0%,#0A0F1E 50%,#111827 100%); }
     .hero .badge { display:inline-block; padding:4px 12px; border-radius:20px; background:rgba(0,212,255,0.1); color:var(--cyan); font-size:11px; font-weight:600; letter-spacing:1px; margin-bottom:20px; }
@@ -77,23 +79,29 @@
     textarea::placeholder { color:#484F58; }
     textarea[readonly] { cursor:default; }
 
-    .presets { padding:12px 16px; border-top:1px solid var(--border); display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-    .presets-label { font-size:11px; color:var(--dim); margin-right:4px; }
-    .preset-chip { padding:5px 12px; border-radius:20px; background:rgba(0,212,255,0.08); color:var(--cyan); border:1px solid rgba(0,212,255,0.15); font-size:12px; cursor:pointer; transition:all .2s; }
-    .preset-chip:hover { background:rgba(0,212,255,0.15); }
-    .stats-bar { display:grid; grid-template-columns:1fr 1fr 1fr; padding:12px 16px; border-top:1px solid var(--border); text-align:center; }
-    .stats-bar .stat-label { font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:1px; }
-    .stats-bar .stat-value { font-size:18px; font-weight:700; }
-
     .target-row { display:flex; justify-content:center; padding:12px 16px; border-bottom:1px solid var(--border); gap:8px; flex-wrap:wrap; }
     .target-row select { padding:8px 16px; border-radius:8px; border:1px solid var(--border); background:#111827; color:var(--text); font-size:13px; outline:none; cursor:pointer; }
 
-    .card-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; }
-    .card { padding:20px; border-radius:12px; border:1px solid var(--border); background:rgba(255,255,255,0.02); transition:all .2s; }
-    .card:hover { border-color:rgba(0,212,255,0.2); background:rgba(255,255,255,0.04); }
-    .card h3 { font-size:15px; margin-bottom:6px; display:flex; align-items:center; gap:8px; }
-    .card p { font-size:13px; color:var(--muted); }
+    /* ====== 3 SECTION STYLES ====== */
 
+    /* Section 1: Curated Skills */
+    .skill-card { padding:20px; border-radius:12px; border:1px solid var(--border); background:rgba(255,255,255,0.02); transition:all .2s; }
+    .skill-card:hover { border-color:rgba(0,212,255,0.2); background:rgba(255,255,255,0.04); }
+    .skill-card-header { display:flex; align-items:flex-start; gap:12px; margin-bottom:10px; }
+    .skill-icon { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+    .skill-icon.blue { background:rgba(0,212,255,0.1); }
+    .skill-icon.purple { background:rgba(168,85,247,0.1); }
+    .skill-icon.orange { background:rgba(245,158,11,0.1); }
+    .skill-card h3 { font-size:15px; margin-bottom:4px; }
+    .skill-card .type-badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600; letter-spacing:0.5px; text-transform:uppercase; margin-bottom:8px; }
+    .skill-card .type-badge.blue { background:rgba(0,212,255,0.1); color:var(--cyan); }
+    .skill-card .type-badge.purple { background:rgba(168,85,247,0.1); color:var(--purple); }
+    .skill-card .type-badge.orange { background:rgba(245,158,11,0.1); color:#F59E0B; }
+    .skill-card p { font-size:13px; color:var(--muted); margin-bottom:14px; line-height:1.5; }
+    .skill-meta { display:flex; gap:12px; font-size:11px; color:var(--dim); margin-bottom:14px; }
+    .skill-actions { display:flex; gap:8px; flex-wrap:wrap; }
+
+    /* Section 2: Skill Repos */
     .repo-row { display:flex; align-items:center; gap:12px; padding:14px 16px; border-radius:12px; border:1px solid var(--border); background:rgba(255,255,255,0.02); margin-bottom:8px; transition:all .2s; }
     .repo-row:hover { border-color:rgba(0,212,255,0.2); }
     .repo-rank { width:32px; height:32px; border-radius:8px; background:rgba(0,212,255,0.08); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:var(--cyan); flex-shrink:0; }
@@ -106,6 +114,23 @@
     .repo-info p { font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .repo-stats { display:flex; gap:16px; font-size:12px; color:var(--muted); flex-shrink:0; }
     .repo-actions { display:flex; gap:6px; flex-shrink:0; }
+
+    /* Section 3: App Repos with Skills */
+    .app-repo-card { padding:18px; border-radius:12px; border:1px solid var(--border); background:rgba(255,255,255,0.02); transition:all .2s; margin-bottom:10px; }
+    .app-repo-card:hover { border-color:rgba(245,158,11,0.2); }
+    .app-repo-header { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+    .app-repo-header a { color:var(--text); text-decoration:none; font-size:15px; font-weight:600; }
+    .app-repo-header a:hover { color:#F59E0B; }
+    .app-tag { padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600; letter-spacing:0.5px; text-transform:uppercase; }
+    .app-tag.dashboard { background:rgba(34,197,94,0.1); color:#22c55e; }
+    .app-tag.tool { background:rgba(59,130,246,0.1); color:#3b82f6; }
+    .app-tag.framework { background:rgba(168,85,247,0.1); color:var(--purple); }
+    .app-tag.platform { background:rgba(245,158,11,0.1); color:#F59E0B; }
+    .app-repo-desc { font-size:13px; color:var(--muted); margin-bottom:8px; line-height:1.4; }
+    .app-repo-footer { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+    .app-repo-meta { display:flex; gap:14px; font-size:12px; color:var(--dim); }
+
+    .card-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; }
 
     .tabs { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:24px; }
     .tab { padding:8px 16px; border-radius:8px; border:1px solid var(--border); background:rgba(255,255,255,0.02); color:var(--muted); font-size:13px; cursor:pointer; transition:all .2s; display:flex; align-items:center; gap:6px; }
@@ -146,8 +171,9 @@
     <a href="#" class="logo">↔ <span>SkillBridge</span></a>
     <div class="links">
       <a href="#converter" data-t="navConverter">Convertidor</a>
-      <a href="#how-it-works" data-t="navHow">Cómo Funciona</a>
-      <a href="#top10" data-t="navTop10">Top 10</a>
+      <a href="#curated-skills" data-t="navCurated">Skills</a>
+      <a href="#skill-repos" data-t="navRepos">Repos</a>
+      <a href="#app-repos" data-t="navApps">Apps</a>
       <a href="#install" data-t="navInstall">Instalación</a>
     </div>
     <div class="right">
@@ -162,10 +188,11 @@
     <p data-t="heroSub">Transformá tus skills de CLAUDE.md a cualquier formato compatible. Pegá, convertí, descargá — listo en segundos.</p>
     <div class="hero-buttons">
       <a href="#converter" class="btn-primary" data-t="heroStart">Empezar a Convertir →</a>
-      <a href="#top10" class="btn-secondary" data-t="heroExamples">Ver Top 10 Skills</a>
+      <a href="#curated-skills" class="btn-secondary" data-t="heroExamples">Ver Skills Disponibles</a>
     </div>
   </div>
 
+  <!-- ===== CONVERTER ===== -->
   <section id="converter">
     <div class="section-title">
       <div class="label" data-t="convLabel">CONVERTIDOR</div>
@@ -224,53 +251,40 @@
           <textarea id="output" readonly placeholder="El resultado convertido aparecerá acá..."></textarea>
         </div>
       </div>
-
-      <div class="presets">
-        <span class="presets-label" data-t="presetsLabel">Presets:</span>
-        <span class="preset-chip" onclick="loadPreset('karpathy')">Karpathy Guidelines</span>
-        <span class="preset-chip" onclick="loadPreset('tdd')">Superpowers TDD</span>
-        <span class="preset-chip" onclick="loadPreset('creator')">Skill Creator</span>
-      </div>
-
-      <div class="stats-bar">
-        <div><div class="stat-label" data-t="statOrig">Original</div><div class="stat-value" id="statOrig">0</div></div>
-        <div><div class="stat-label" data-t="statConv">Convertido</div><div class="stat-value" id="statConv" style="color:var(--cyan)">0</div></div>
-        <div><div class="stat-label" data-t="statSec">Secciones</div><div class="stat-value" id="statSec" style="color:var(--purple)">0</div></div>
-      </div>
     </div>
   </section>
 
-  <section id="how-it-works">
+  <!-- ====== SECTION 1: CURATED SKILLS ====== -->
+  <section id="curated-skills">
     <div class="section-title">
-      <div class="label" style="color:var(--purple)">GUÍA</div>
-      <h2 data-t="howTitle">Cómo Funciona</h2>
-      <p data-t="howSub">3 formas de convertir tus skills de Claude</p>
+      <div class="label" style="color:var(--cyan)">⭐ SKILLS CURADAS</div>
+      <h2 data-t="curatedTitle">Skills Individuales Populares</h2>
+      <p data-t="curatedSub">Skills probadas y listas para usar. Tocá "Cargar en convertidor" para transformarlas.</p>
     </div>
-    <div class="card-grid">
-      <div class="card">
-        <h3>1️⃣ <span data-t="how1Title">Pegar texto</span></h3>
-        <p data-t="how1Desc">Copiá el contenido de un CLAUDE.md y pegalo directamente en el convertidor. La conversión es instantánea.</p>
-      </div>
-      <div class="card">
-        <h3>2️⃣ <span data-t="how2Title">URL de GitHub</span></h3>
-        <p data-t="how2Desc">Pegá github.com/owner/repo y tocá "Cargar". Nuestro servidor descarga y convierte automáticamente (sin errores CORS).</p>
-      </div>
-      <div class="card">
-        <h3>3️⃣ <span data-t="how3Title">Presets incluidos</span></h3>
-        <p data-t="how3Desc">Tocá cualquier preset (Karpathy, TDD, Skill Creator) para cargarlo y convertirlo al instante.</p>
-      </div>
-    </div>
+    <div class="card-grid" id="curatedList"></div>
   </section>
 
-  <section id="top10">
+  <!-- ====== SECTION 2: SKILL REPOSITORIES ====== -->
+  <section id="skill-repos">
     <div class="section-title">
-      <div class="label" style="color:#F59E0B">🏆 TOP 10</div>
-      <h2 data-t="top10Title">Repositorios Más Populares</h2>
-      <p data-t="top10Sub">Skills de Claude con más estrellas en GitHub. Tocá "Convertir" para transformarlos.</p>
+      <div class="label" style="color:var(--purple)">📚 REPOSITORIOS DE SKILLS</div>
+      <h2 data-t="reposTitle">Colecciones de Skills para IA</h2>
+      <p data-t="reposSub">Repositorios cuyo propósito principal es almacenar y distribuir skills de IA. Tocá "Convertir" para extraer su skill principal.</p>
     </div>
-    <div id="top10list"></div>
+    <div id="skillReposList"></div>
   </section>
 
+  <!-- ====== SECTION 3: APP REPOS WITH EMBEDDED SKILLS ====== -->
+  <section id="app-repos">
+    <div class="section-title">
+      <div class="label" style="color:#F59E0B">🚀 APPS CON SKILLS</div>
+      <h2 data-t="appsTitle">Aplicaciones y Frameworks con Skills</h2>
+      <p data-t="appsSub">Repositorios populares que NO son de skills (son apps, dashboards, herramientas) pero que contienen un CLAUDE.md o SKILL.md embebido. Tocá "Extraer skill" para obtenerlo.</p>
+    </div>
+    <div id="appReposList"></div>
+  </section>
+
+  <!-- ====== INSTALLATION ====== -->
   <section id="install">
     <div class="section-title">
       <div class="label" style="color:var(--cyan)">📖 INSTALACIÓN</div>
@@ -290,7 +304,8 @@
       <div>
         <h4 data-t="footerProduct">Producto</h4>
         <a href="#converter" data-t="footerConv">Convertidor</a>
-        <a href="#top10" data-t="footerTop10">Top 10</a>
+        <a href="#curated-skills" data-t="footerSkills">Skills</a>
+        <a href="#skill-repos" data-t="footerRepos">Repos</a>
         <a href="#install" data-t="footerInstall">Instalación</a>
       </div>
       <div>
