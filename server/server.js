@@ -227,6 +227,80 @@ app.get('/api/search-skills', async (req, res) => {
   }
 });
 
+// Browse a GitHub repo to find all skill files inside it
+app.get('/api/browse-repo', async (req, res) => {
+  const { repo } = req.query;
+  if (!repo) return res.status(400).json({ error: 'Missing repo parameter' });
+
+  const skillExtensions = ['.md', '.cursorrules', '.mdc'];
+  const skillNamePatterns = ['CLAUDE', 'SKILL', 'claude', 'skill', 'cursor', 'prompt', 'agent', 'ai-', 'llm'];
+
+  try {
+    // Try to get the repo tree
+    const branches = ['main', 'master'];
+    let allFiles = [];
+
+    for (const branch of branches) {
+      try {
+        // Try the GitHub API tree endpoint (recursive)
+        const treeResp = await fetch(
+          `https://api.github.com/repos/${repo}/git/trees/${branch}?recursive=1`,
+          process.env.GITHUB_TOKEN ? { headers: { Authorization: `token ${process.env.GITHUB_TOKEN}` } } : {}
+        );
+
+        if (treeResp.ok) {
+          const treeData = await treeResp.json();
+          const files = (treeData.tree || [])
+            .filter(item => item.type === 'blob')
+            .map(item => {
+              const isSkillFile = skillExtensions.some(ext => item.path.endsWith(ext));
+              const matchesPattern = skillNamePatterns.some(p =>
+                item.path.toLowerCase().includes(p.toLowerCase())
+              );
+              return {
+                path: item.path,
+                size: item.size,
+                isSkillFile,
+                matchesPattern,
+                score: (isSkillFile ? 2 : 0) + (matchesPattern ? 3 : 0)
+              };
+            })
+            .filter(f => f.isSkillFile || f.matchesPattern)
+            .sort((a, b) => b.score - a.score);
+
+          allFiles = files;
+          break;
+        }
+      } catch (e) { /* try next branch */ }
+    }
+
+    // Also try to get repo info
+    const repoInfo = await fetchRepoInfo(repo);
+
+    // Categorize
+    const skillFiles = allFiles.filter(f => f.score >= 3);
+    const maybeFiles = allFiles.filter(f => f.score < 3 && f.score > 0);
+
+    res.json({
+      success: true,
+      repo,
+      totalFiles: allFiles.length,
+      skillFiles: skillFiles.slice(0, 30),
+      otherMarkdownFiles: maybeFiles.slice(0, 20),
+      repoInfo: {
+        description: repoInfo.description,
+        stargazers_count: repoInfo.stargazers_count,
+        forks_count: repoInfo.forks_count,
+        html_url: repoInfo.html_url,
+        topics: repoInfo.topics || []
+      }
+    });
+
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Get stats
 app.get('/api/stats', (req, res) => {
   const topTargets = {};

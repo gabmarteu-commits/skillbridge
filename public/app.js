@@ -26,6 +26,13 @@ const i18n = {
     reposSub:'Repositorios cuyo propósito principal es almacenar y distribuir skills de IA. Tocá "Convertir" para extraer su skill principal.',
     reposConvert:'Convertir',
     reposList:'Ver lista',
+    // Search
+    searchTitle:'🔍 Buscar Skills y Repositorios', searchSub:'Buscá skills individuales o repositorios completos. Un repo puede contener muchos skills adentro.',
+    searchBtn:'Buscar', searching:'Buscando...', searchNoResults:'No se encontraron resultados. Probá con otra palabra.',
+    searchResultsSkills:'Skills Individuales', searchResultsRepos:'Repositorios Encontrados',
+    searchSkillBadge:'SKILL INDIVIDUAL', searchRepoBadge:'REPOSITORIO',
+    searchViewSkills:'Ver {count} skills', searchLoadFile:'Cargar archivo',
+    searchFilesInRepo:'Archivos skill en este repo:',
     // Section 3: App Repos
     appsTitle:'Aplicaciones y Frameworks con Skills',
     appsSub:'Repositorios populares que NO son de skills (son apps, dashboards, herramientas) pero que contienen un CLAUDE.md o SKILL.md embebido. Tocá "Extraer skill" para obtenerlo.',
@@ -67,6 +74,13 @@ const i18n = {
     reposSub:'Repositories whose main purpose is to store and distribute AI skills. Click "Convert" to extract their main skill.',
     reposConvert:'Convert',
     reposList:'View list',
+    // Search
+    searchTitle:'🔍 Search Skills & Repositories', searchSub:'Search individual skills or complete repositories. A repo can contain many skills inside.',
+    searchBtn:'Search', searching:'Searching...', searchNoResults:'No results found. Try a different term.',
+    searchResultsSkills:'Individual Skills', searchResultsRepos:'Repositories Found',
+    searchSkillBadge:'INDIVIDUAL SKILL', searchRepoBadge:'REPOSITORY',
+    searchViewSkills:'View {count} skills', searchLoadFile:'Load file',
+    searchFilesInRepo:'Skill files in this repo:',
     // Section 3: App Repos
     appsTitle:'Apps & Frameworks with Skills',
     appsSub:'Popular repositories that are NOT skill repos (they are apps, dashboards, tools) but contain an embedded CLAUDE.md or SKILL.md. Click "Extract skill" to get it.',
@@ -579,6 +593,261 @@ function renderInstallTabs(tabId) {
 function copyText(btn, text) {
   navigator.clipboard.writeText(text);
   btn.textContent = '✅'; setTimeout(() => btn.textContent = '📋', 1500);
+}
+
+// ===================== SEARCH =====================
+let searchFilter = 'all'; // all | skills | repos
+let searchRepoCache = {}; // cache browse-repo results
+
+function setSearchFilter(f) {
+  searchFilter = f;
+  document.querySelectorAll('.search-filter').forEach(el => {
+    el.classList.toggle('active', el.getAttribute('data-filter') === f);
+  });
+  // Re-render current results if any
+  const resultsEl = document.getElementById('searchResults');
+  if (resultsEl.dataset.lastQuery) {
+    renderSearchResults(resultsEl.dataset.lastQuery, JSON.parse(resultsEl.dataset.lastResults || '{}'));
+  }
+}
+
+async function performSearch() {
+  const query = document.getElementById('searchInput').value.trim();
+  const resultsEl = document.getElementById('searchResults');
+  const btn = document.getElementById('searchBtn');
+
+  if (!query) { resultsEl.innerHTML = ''; return; }
+
+  btn.innerHTML = '<span class="spinner"></span> ' + (lang === 'es' ? 'Buscando...' : 'Searching...');
+  resultsEl.innerHTML = `<div class="search-loading"><span class="spinner"></span></div>`;
+
+  const results = { skills: [], repos: [] };
+
+  // 1. Search curated skills locally (if filter allows)
+  if (searchFilter !== 'repos') {
+    const q = query.toLowerCase();
+    results.skills = CURATED_SKILLS.filter(s =>
+      s.name.toLowerCase().includes(q) ||
+      s.description.toLowerCase().includes(q) ||
+      s.type.toLowerCase().includes(q) ||
+      s.id.toLowerCase().includes(q)
+    );
+  }
+
+  // 2. Search GitHub repos (if filter allows)
+  if (searchFilter !== 'skills') {
+    try {
+      // Use multiple search queries for better coverage
+      const searchQueries = [
+        `${query} claude skill`,
+        `${query} CLAUDE.md`,
+        `${query} skill`,
+        query
+      ];
+      const allRepos = [];
+      const seen = new Set();
+
+      for (const sq of searchQueries) {
+        try {
+          const resp = await fetch(`/api/search-skills?q=${encodeURIComponent(sq)}`);
+          if (resp.ok) {
+            const items = await resp.json();
+            for (const r of items) {
+              if (!seen.has(r.full_name)) {
+                seen.add(r.full_name);
+                allRepos.push(r);
+              }
+            }
+          }
+        } catch (e) {}
+        if (allRepos.length >= 10) break;
+      }
+
+      results.repos = allRepos.slice(0, 15);
+
+      // For each repo, pre-fetch skill count
+      for (const repo of results.repos) {
+        if (!searchRepoCache[repo.full_name]) {
+          fetch(`/api/browse-repo?repo=${encodeURIComponent(repo.full_name)}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+              if (data && data.success) {
+                searchRepoCache[repo.full_name] = data;
+                // Re-render if this repo is visible
+                updateRepoSkillCount(repo.full_name, data);
+              }
+            })
+            .catch(() => {});
+        }
+      }
+
+    } catch (e) {
+      console.error('Search repos error:', e);
+    }
+  }
+
+  resultsEl.dataset.lastQuery = query;
+  resultsEl.dataset.lastResults = JSON.stringify({ skills: results.skills.map(s => s.id), repos: results.repos.map(r => r.full_name) });
+
+  renderSearchResults(query, results);
+  btn.innerHTML = '🔍 ' + t('searchBtn');
+}
+
+function renderSearchResults(query, results) {
+  const el = document.getElementById('searchResults');
+  const showSkills = searchFilter !== 'repos';
+  const showRepos = searchFilter !== 'skills';
+
+  let html = '';
+
+  // Skills section
+  if (showSkills && results.skills && results.skills.length > 0) {
+    html += `<h3>🎯 ${t('searchResultsSkills')} <span class="count">${results.skills.length}</span></h3>`;
+    for (const s of results.skills) {
+      html += `
+        <div class="result-skill-row">
+          <span class="badge-skill">${t('searchSkillBadge')}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;font-size:14px;">${s.name}</div>
+            <div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.description}</div>
+          </div>
+          <span style="font-size:11px;color:var(--dim);flex-shrink:0;">⭐ ${s.stars >= 1000 ? (s.stars/1000).toFixed(1)+'k' : s.stars}</span>
+          <button class="btn-load" onclick="loadPreset('${s.id}')">⚡ ${t('curatedLoad')}</button>
+        </div>
+      `;
+    }
+  }
+
+  // Repos section
+  if (showRepos && results.repos && results.repos.length > 0) {
+    if (html) html += '<div style="height:16px;"></div>';
+    html += `<h3>📦 ${t('searchResultsRepos')} <span class="count">${results.repos.length}</span></h3>`;
+    for (const r of results.repos) {
+      const cache = searchRepoCache[r.full_name];
+      const skillCount = cache ? cache.skillFiles.length : null;
+      html += `
+        <div class="result-repo-row" id="search-repo-${r.full_name.replace(/[\/]/g,'--')}">
+          <div class="result-repo-header">
+            <span class="badge-repo">${t('searchRepoBadge')}</span>
+            <a href="${r.html_url}" target="_blank" rel="noopener">${r.full_name}</a>
+            <span class="repo-stats">⭐ ${fmtNum(r.stargazers_count)} · 🍴 ${fmtNum(r.forks_count)}</span>
+          </div>
+          <div class="result-repo-desc">${r.description || ''}</div>
+          <div class="result-repo-footer">
+            <div class="result-repo-meta">
+              ${skillCount !== null
+                ? `<button class="skill-count-badge" onclick="toggleRepoFiles('${r.full_name.replace(/'/g,"\\'")}')">📄 ${t('searchViewSkills').replace('{count}', skillCount)}</button>`
+                : `<span style="font-size:11px;color:var(--dim);"><span class="spinner"></span> ${lang==='es'?'Contando skills...':'Counting skills...'}</span>`
+              }
+            </div>
+            <div class="repo-actions">
+              <button class="preset-chip" onclick="convertRepo('${r.full_name}')">⚡ ${lang==='es'?'Convertir':'Convert'}</button>
+              <a href="${r.html_url}" class="btn-sm" target="_blank" rel="noopener">🔗 GitHub</a>
+            </div>
+          </div>
+          <div class="repo-files-list hidden" id="repo-files-${r.full_name.replace(/[\/]/g,'--')}"></div>
+        </div>
+      `;
+    }
+  }
+
+  if (!html) {
+    html = `<div class="search-empty">🔍 ${t('searchNoResults')}</div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+function updateRepoSkillCount(repoName, data) {
+  const el = document.getElementById(`search-repo-${repoName.replace(/[\/]/g, '--')}`);
+  if (!el) return;
+  const metaEl = el.querySelector('.result-repo-meta');
+  if (metaEl && data.skillFiles) {
+    metaEl.innerHTML = `<button class="skill-count-badge" onclick="toggleRepoFiles('${repoName.replace(/'/g,"\\'")}')">📄 ${t('searchViewSkills').replace('{count}', data.skillFiles.length)}</button>`;
+  }
+}
+
+async function toggleRepoFiles(repoName) {
+  const containerId = `repo-files-${repoName.replace(/[\/]/g, '--')}`;
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  // Toggle visibility
+  if (!container.classList.contains('hidden') && container.innerHTML) {
+    container.classList.add('hidden');
+    return;
+  }
+
+  container.classList.remove('hidden');
+
+  // Check cache first
+  if (searchRepoCache[repoName]) {
+    renderRepoFiles(container, repoName, searchRepoCache[repoName]);
+    return;
+  }
+
+  container.innerHTML = '<div style="text-align:center;padding:10px;"><span class="spinner"></span></div>';
+
+  try {
+    const resp = await fetch(`/api/browse-repo?repo=${encodeURIComponent(repoName)}`);
+    const data = await resp.json();
+    if (data.success) {
+      searchRepoCache[repoName] = data;
+      renderRepoFiles(container, repoName, data);
+    } else {
+      container.innerHTML = '<div style="color:var(--dim);font-size:12px;">Could not browse repo files</div>';
+    }
+  } catch (e) {
+    container.innerHTML = '<div style="color:var(--dim);font-size:12px;">Error loading files</div>';
+  }
+}
+
+function renderRepoFiles(container, repoName, data) {
+  const files = data.skillFiles || [];
+  if (files.length === 0) {
+    container.innerHTML = '<div style="color:var(--dim);font-size:12px;">No skill files detected</div>';
+    return;
+  }
+
+  let html = `<h4>${t('searchFilesInRepo')}</h4>`;
+  for (const f of files.slice(0, 15)) {
+    const isHighConfidence = f.score >= 3;
+    html += `
+      <div class="repo-file-item">
+        <span>${isHighConfidence ? '✅' : '◻️'}</span>
+        <code>${f.path}</code>
+        <span style="margin-left:auto;font-size:11px;color:var(--dim);">${(f.size/1024).toFixed(1)}KB</span>
+        <button onclick="loadRepoFile('${repoName.replace(/'/g,"\\'")}', '${f.path.replace(/'/g,"\\'")}')">${t('searchLoadFile')}</button>
+      </div>
+    `;
+  }
+  if (files.length > 15) {
+    html += `<div style="font-size:11px;color:var(--dim);padding:5px 0;">...and ${files.length - 15} more files</div>`;
+  }
+  container.innerHTML = html;
+}
+
+async function loadRepoFile(repoName, filePath) {
+  // Use the fetch-skill endpoint but force a specific path
+  // We'll construct a manual fetch to raw.githubusercontent
+  const branches = ['main', 'master'];
+  for (const branch of branches) {
+    try {
+      const url = `https://raw.githubusercontent.com/${repoName}/${branch}/${filePath}`;
+      const resp = await fetch(url);
+      if (resp.ok) {
+        const content = await resp.text();
+        if (content.length > 50) {
+          document.getElementById('input').value = content;
+          onInput();
+          document.getElementById('converter').scrollIntoView({ behavior: 'smooth' });
+          showToast(t('ghOk') + ` (${filePath})`, 'success');
+          return;
+        }
+      }
+    } catch (e) {}
+  }
+  showToast('Failed to load file', 'error');
 }
 
 // ===================== INIT =====================

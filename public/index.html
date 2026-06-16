@@ -160,6 +160,49 @@
     .spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(0,212,255,0.2); border-top-color:var(--cyan); border-radius:50%; animation:spin 0.8s linear infinite; }
     @keyframes spin { to { transform:rotate(360deg); } }
 
+    /* ===== Search Section ===== */
+    .search-section { max-width:1100px; margin:0 auto; padding:0 24px 40px; }
+    .search-box { border:1px solid var(--border); border-radius:16px; background:rgba(10,15,30,0.6); overflow:hidden; }
+    .search-header { padding:20px 24px; border-bottom:1px solid var(--border); }
+    .search-header h2 { font-size:20px; margin-bottom:4px; }
+    .search-header p { font-size:13px; color:var(--muted); }
+    .search-input-row { display:flex; gap:10px; padding:16px 24px; }
+    .search-input-row input { flex:1; padding:14px 18px; border-radius:12px; border:1px solid var(--border); background:#111827; color:var(--text); font-size:15px; outline:none; transition:border-color .2s; }
+    .search-input-row input:focus { border-color:var(--cyan); }
+    .search-input-row input::placeholder { color:#484F58; }
+    .search-input-row button { padding:14px 24px; border-radius:12px; background:linear-gradient(135deg,var(--cyan),var(--purple)); color:#fff; font-size:14px; font-weight:600; border:none; cursor:pointer; transition:opacity .2s; white-space:nowrap; }
+    .search-input-row button:hover { opacity:0.9; }
+    .search-filters { display:flex; gap:8px; padding:0 24px 16px; flex-wrap:wrap; }
+    .search-filter { padding:5px 12px; border-radius:20px; border:1px solid var(--border); background:rgba(255,255,255,0.02); color:var(--dim); font-size:12px; cursor:pointer; transition:all .2s; }
+    .search-filter:hover { border-color:var(--cyan); color:var(--cyan); }
+    .search-filter.active { border-color:var(--cyan); background:rgba(0,212,255,0.08); color:var(--cyan); }
+    .search-results { padding:0 24px 24px; }
+    .search-results h3 { font-size:14px; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+    .search-results h3 .count { padding:2px 8px; border-radius:10px; background:rgba(0,212,255,0.1); color:var(--cyan); font-size:11px; }
+    .result-skill-row { display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:10px; border:1px solid var(--border); background:rgba(0,212,255,0.02); margin-bottom:8px; transition:all .2s; }
+    .result-skill-row:hover { border-color:rgba(0,212,255,0.25); }
+    .result-skill-row .badge-skill { padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; background:rgba(0,212,255,0.1); color:var(--cyan); flex-shrink:0; }
+    .result-repo-row { display:flex; flex-direction:column; padding:14px 16px; border-radius:10px; border:1px solid var(--border); background:rgba(168,85,247,0.02); margin-bottom:8px; transition:all .2s; }
+    .result-repo-row:hover { border-color:rgba(168,85,247,0.25); }
+    .result-repo-row .badge-repo { padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; background:rgba(168,85,247,0.1); color:var(--purple); flex-shrink:0; }
+    .result-repo-header { display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:wrap; }
+    .result-repo-header a { color:var(--text); text-decoration:none; font-size:14px; font-weight:600; }
+    .result-repo-header a:hover { color:var(--purple); }
+    .result-repo-desc { font-size:12px; color:var(--muted); margin-bottom:8px; }
+    .result-repo-footer { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .result-repo-meta { display:flex; gap:14px; font-size:12px; color:var(--dim); }
+    .skill-count-badge { padding:3px 10px; border-radius:20px; background:rgba(168,85,247,0.1); color:var(--purple); font-size:11px; font-weight:600; cursor:pointer; transition:all .2s; border:none; }
+    .skill-count-badge:hover { background:rgba(168,85,247,0.2); }
+    .repo-files-list { margin-top:10px; padding:10px 14px; border-radius:8px; background:rgba(255,255,255,0.02); border:1px solid var(--border); }
+    .repo-files-list h4 { font-size:12px; color:var(--dim); margin-bottom:8px; }
+    .repo-file-item { display:flex; align-items:center; gap:8px; padding:5px 0; font-size:12px; color:var(--muted); border-bottom:1px solid rgba(255,255,255,0.03); }
+    .repo-file-item:last-child { border-bottom:none; }
+    .repo-file-item code { background:rgba(255,255,255,0.05); padding:2px 6px; border-radius:4px; font-size:11px; }
+    .repo-file-item button { margin-left:auto; font-size:11px; padding:3px 10px; border-radius:6px; border:1px solid var(--border); background:rgba(0,212,255,0.05); color:var(--cyan); cursor:pointer; }
+    .repo-file-item button:hover { border-color:var(--cyan); }
+    .search-empty { text-align:center; padding:30px; color:var(--dim); font-size:14px; }
+    .search-loading { text-align:center; padding:30px; }
+
     .hidden { display:none !important; }
     .center { text-align:center; }
     .muted { color:var(--muted); }
@@ -191,6 +234,26 @@
       <a href="#curated-skills" class="btn-secondary" data-t="heroExamples">Ver Skills Disponibles</a>
     </div>
   </div>
+
+  <!-- ===== SEARCH SECTION ===== -->
+  <section class="search-section" id="search-section">
+    <div class="search-box">
+      <div class="search-header">
+        <h2 data-t="searchTitle">🔍 Buscar Skills y Repositorios</h2>
+        <p data-t="searchSub">Buscá skills individuales o repositorios completos. Un repo puede contener muchos skills adentro.</p>
+      </div>
+      <div class="search-input-row">
+        <input type="text" id="searchInput" placeholder="Ej: testing, karpathy, claude skills, dashboard..." onkeydown="if(event.key==='Enter')performSearch()">
+        <button onclick="performSearch()" id="searchBtn">🔍 <span data-t="searchBtn">Buscar</span></button>
+      </div>
+      <div class="search-filters" id="searchFilters">
+        <span class="search-filter active" data-filter="all" onclick="setSearchFilter('all')">Todo</span>
+        <span class="search-filter" data-filter="skills" onclick="setSearchFilter('skills')">Skills Individuales</span>
+        <span class="search-filter" data-filter="repos" onclick="setSearchFilter('repos')">Repos de Skills</span>
+      </div>
+      <div class="search-results" id="searchResults"></div>
+    </div>
+  </section>
 
   <!-- ===== CONVERTER ===== -->
   <section id="converter">
