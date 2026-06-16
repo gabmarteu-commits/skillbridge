@@ -609,8 +609,9 @@ function updateRepoSkillCount(repoName, data) {
   const el = document.getElementById(`search-repo-${repoName.replace(/[\/]/g, '--')}`);
   if (!el) return;
   const metaEl = el.querySelector('.result-repo-meta');
-  if (metaEl && data.skillFiles) {
-    metaEl.innerHTML = `<button class="skill-count-badge" onclick="toggleRepoFiles('${repoName.replace(/'/g,"\\'")}')">📄 ${t('searchViewSkills').replace('{count}', data.skillFiles.length)}</button>`;
+  const totalFiles = data.totalFiles || 0;
+  if (metaEl && totalFiles > 0) {
+    metaEl.innerHTML = `<button class="skill-count-badge" onclick="toggleRepoFiles('${repoName.replace(/'/g,"\\'")}')">📄 ${t('searchViewSkills').replace('{count}', totalFiles)}</button>`;
   }
 }
 
@@ -650,28 +651,97 @@ async function toggleRepoFiles(repoName) {
 }
 
 function renderRepoFiles(container, repoName, data) {
-  const files = data.skillFiles || [];
-  if (files.length === 0) {
+  const groups = data.groups || [];
+  const totalFiles = data.totalFiles || 0;
+  const highConf = data.highConfidenceCount || 0;
+
+  if (groups.length === 0) {
     container.innerHTML = '<div style="color:var(--dim);font-size:12px;">No skill files detected</div>';
     return;
   }
 
-  let html = `<h4>${t('searchFilesInRepo')}</h4>`;
-  for (const f of files.slice(0, 15)) {
-    const isHighConfidence = f.score >= 3;
-    html += `
-      <div class="repo-file-item">
-        <span>${isHighConfidence ? '✅' : '◻️'}</span>
-        <code>${f.path}</code>
-        <span style="margin-left:auto;font-size:11px;color:var(--dim);">${(f.size/1024).toFixed(1)}KB</span>
-        <button onclick="loadRepoFile('${repoName.replace(/'/g,"\\'")}', '${f.path.replace(/'/g,"\\'")}')">${t('searchLoadFile')}</button>
+  // Mini search + stats header
+  let html = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+      <div style="font-size:12px;color:var(--muted);">
+        📄 <strong>${totalFiles}</strong> files skill · <strong>${highConf}</strong> high confidence · ${groups.length} folder${groups.length>1?'s':''}
       </div>
+      <input type="text" placeholder="Filter files..." oninput="filterRepoFiles(this,'${repoName.replace(/'/g,"\\'")}')"
+        style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:#111827;color:var(--text);font-size:12px;width:160px;outline:none;">
+    </div>
+  `;
+
+  // Render groups (collapsible)
+  for (const g of groups) {
+    const groupId = `rg-${repoName.replace(/[\/]/g,'--')}-${g.dir.replace(/[^a-z0-9]/gi,'-')}`;
+    const isRoot = g.dir === '(root)';
+    const dirLabel = isRoot ? '📁 Root' : `📁 ${g.dir}`;
+    const isCollapsed = g.count > 8; // Collapse large groups by default
+
+    html += `
+      <div class="repo-group" data-dir="${g.dir}" style="margin-bottom:6px;">
+        <div class="repo-group-header" onclick="toggleGroup('${groupId}')" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid var(--border);transition:all .2s;">
+          <span id="${groupId}-arrow" style="font-size:10px;transition:transform .2s;${isCollapsed?'':'transform:rotate(90deg)'}"}>▶</span>
+          <span style="font-size:12px;font-weight:600;">${dirLabel}</span>
+          <span style="margin-left:auto;padding:2px 8px;border-radius:10px;background:rgba(0,212,255,0.08);color:var(--cyan);font-size:11px;font-weight:600;">${g.count}</span>
+        </div>
+        <div id="${groupId}" class="repo-group-files" style="${isCollapsed?'display:none;':''}padding:4px 0 4px 20px;">
     `;
+
+    for (const f of g.files) {
+      const isHigh = f.score >= 3;
+      html += `
+        <div class="repo-file-item" data-path="${f.path.toLowerCase()}" style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;color:var(--muted);border-bottom:1px solid rgba(255,255,255,0.03);">
+          <span>${isHigh ? '✅' : '◻️'}</span>
+          <code style="background:rgba(255,255,255,0.05);padding:2px 6px;border-radius:4px;font-size:11px;">${f.path}</code>
+          <span style="margin-left:auto;font-size:11px;color:var(--dim);">${f.size > 0 ? (f.size/1024).toFixed(1)+'KB' : '-'}</span>
+          <button onclick="loadRepoFile('${repoName.replace(/'/g,"\\'")}', '${f.path.replace(/'/g,"\\'")}')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:rgba(0,212,255,0.05);color:var(--cyan);cursor:pointer;">${t('searchLoadFile')}</button>
+        </div>
+      `;
+    }
+
+    if (g.count > g.files.length) {
+      html += `<div style="font-size:11px;color:var(--dim);padding:5px 0;">...and ${g.count - g.files.length} more in this folder</div>`;
+    }
+
+    html += `</div></div>`;
   }
-  if (files.length > 15) {
-    html += `<div style="font-size:11px;color:var(--dim);padding:5px 0;">...and ${files.length - 15} more files</div>`;
-  }
+
   container.innerHTML = html;
+}
+
+function toggleGroup(groupId) {
+  const el = document.getElementById(groupId);
+  const arrow = document.getElementById(groupId + '-arrow');
+  if (!el) return;
+  const isHidden = el.style.display === 'none';
+  el.style.display = isHidden ? 'block' : 'none';
+  if (arrow) arrow.style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';
+}
+
+function filterRepoFiles(input, repoName) {
+  const q = input.value.toLowerCase();
+  const containerId = `repo-files-${repoName.replace(/[\/]/g, '--')}`;
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  // Filter individual file items
+  const items = container.querySelectorAll('.repo-file-item');
+  let visibleCount = 0;
+  items.forEach(item => {
+    const path = item.getAttribute('data-path') || '';
+    const match = path.includes(q);
+    item.style.display = match ? 'flex' : 'none';
+    if (match) visibleCount++;
+  });
+
+  // Show/hide groups based on whether they have visible files
+  const groups = container.querySelectorAll('.repo-group');
+  groups.forEach(g => {
+    const files = g.querySelectorAll('.repo-file-item');
+    const hasVisible = Array.from(files).some(f => f.style.display !== 'none');
+    g.style.display = hasVisible || q === '' ? 'block' : 'none';
+  });
 }
 
 async function loadRepoFile(repoName, filePath) {

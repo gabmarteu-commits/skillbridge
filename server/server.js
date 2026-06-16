@@ -261,22 +261,20 @@ app.get('/api/search-skills', async (req, res) => {
   }
 });
 
-// Browse a GitHub repo to find all skill files inside it
+// Browse a GitHub repo to find all skill files inside it, grouped by folder
 app.get('/api/browse-repo', async (req, res) => {
   const { repo } = req.query;
   if (!repo) return res.status(400).json({ error: 'Missing repo parameter' });
 
   const skillExtensions = ['.md', '.cursorrules', '.mdc'];
-  const skillNamePatterns = ['CLAUDE', 'SKILL', 'claude', 'skill', 'cursor', 'prompt', 'agent', 'ai-', 'llm'];
+  const skillNamePatterns = ['CLAUDE', 'SKILL', 'claude', 'skill', 'cursor', 'prompt', 'agent', 'ai-', 'llm', 'system', 'instruction'];
 
   try {
-    // Try to get the repo tree
     const branches = ['main', 'master'];
     let allFiles = [];
 
     for (const branch of branches) {
       try {
-        // Try the GitHub API tree endpoint (recursive)
         const treeResp = await fetch(
           `https://api.github.com/repos/${repo}/git/trees/${branch}?recursive=1`,
           process.env.GITHUB_TOKEN ? { headers: { Authorization: `token ${process.env.GITHUB_TOKEN}` } } : {}
@@ -284,16 +282,18 @@ app.get('/api/browse-repo', async (req, res) => {
 
         if (treeResp.ok) {
           const treeData = await treeResp.json();
-          const files = (treeData.tree || [])
+          allFiles = (treeData.tree || [])
             .filter(item => item.type === 'blob')
             .map(item => {
               const isSkillFile = skillExtensions.some(ext => item.path.endsWith(ext));
               const matchesPattern = skillNamePatterns.some(p =>
                 item.path.toLowerCase().includes(p.toLowerCase())
               );
+              const dir = item.path.includes('/') ? item.path.substring(0, item.path.lastIndexOf('/')) : '(root)';
               return {
                 path: item.path,
                 size: item.size,
+                dir,
                 isSkillFile,
                 matchesPattern,
                 score: (isSkillFile ? 2 : 0) + (matchesPattern ? 3 : 0)
@@ -301,26 +301,41 @@ app.get('/api/browse-repo', async (req, res) => {
             })
             .filter(f => f.isSkillFile || f.matchesPattern)
             .sort((a, b) => b.score - a.score);
-
-          allFiles = files;
           break;
         }
       } catch (e) { /* try next branch */ }
     }
 
-    // Also try to get repo info
     const repoInfo = await fetchRepoInfo(repo);
 
-    // Categorize
-    const skillFiles = allFiles.filter(f => f.score >= 3);
-    const maybeFiles = allFiles.filter(f => f.score < 3 && f.score > 0);
+    // Group by directory
+    const byDir = {};
+    allFiles.forEach(f => {
+      if (!byDir[f.dir]) byDir[f.dir] = [];
+      byDir[f.dir].push(f);
+    });
+
+    // Sort dirs: root first, then by number of files (most first)
+    const sortedDirs = Object.keys(byDir).sort((a, b) => {
+      if (a === '(root)') return -1;
+      if (b === '(root)') return 1;
+      return byDir[b].length - byDir[a].length;
+    });
+
+    const groups = sortedDirs.map(dir => ({
+      dir,
+      count: byDir[dir].length,
+      files: byDir[dir].slice(0, 50) // cap per group
+    }));
+
+    const highConfidence = allFiles.filter(f => f.score >= 3);
 
     res.json({
       success: true,
       repo,
       totalFiles: allFiles.length,
-      skillFiles: skillFiles.slice(0, 30),
-      otherMarkdownFiles: maybeFiles.slice(0, 20),
+      highConfidenceCount: highConfidence.length,
+      groups,
       repoInfo: {
         description: repoInfo.description,
         stargazers_count: repoInfo.stargazers_count,
