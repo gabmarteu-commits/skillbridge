@@ -4,6 +4,7 @@ const fetch = require('node-fetch');
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
+const DEFAULT_DATA = require('./data');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -34,6 +35,39 @@ function saveDB(db) {
 }
 
 let db = loadDB();
+
+// ===== Dynamic Data Store (curated skills, repos, app repos) =====
+const DATA_PATH = path.join(__dirname, 'skillbridge-data.json');
+
+function loadDynamicData() {
+  try {
+    if (fs.existsSync(DATA_PATH)) {
+      const saved = JSON.parse(fs.readFileSync(DATA_PATH, 'utf8'));
+      // Merge with defaults to ensure all fields exist
+      return {
+        curatedSkills: saved.curatedSkills || DEFAULT_DATA.curatedSkills,
+        skillRepos: saved.skillRepos || DEFAULT_DATA.skillRepos,
+        appRepos: saved.appRepos || DEFAULT_DATA.appRepos
+      };
+    }
+  } catch (e) {
+    console.error('Failed to load dynamic data:', e.message);
+  }
+  // First time: save defaults
+  const data = { ...DEFAULT_DATA };
+  saveDynamicData(data);
+  return data;
+}
+
+function saveDynamicData(data) {
+  try {
+    fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2));
+  } catch (e) {
+    console.error('Failed to save dynamic data:', e.message);
+  }
+}
+
+let dynamicData = loadDynamicData();
 
 // Helpers
 function addConversion(conv) {
@@ -313,6 +347,76 @@ app.get('/api/stats', (req, res) => {
     targetStats: db.conversionStats,
     topTargets: Object.entries(topTargets).map(([target_format, count]) => ({ target_format, count }))
   });
+});
+
+// ===== API: Dynamic Data (curated skills, repos, app repos) =====
+app.get('/api/data/curated-skills', (req, res) => {
+  res.json(dynamicData.curatedSkills || []);
+});
+
+app.get('/api/data/skill-repos', (req, res) => {
+  res.json(dynamicData.skillRepos || []);
+});
+
+app.get('/api/data/app-repos', (req, res) => {
+  res.json(dynamicData.appRepos || []);
+});
+
+// Add new items (no auth needed — open platform)
+app.post('/api/data/curated-skills', (req, res) => {
+  const skill = req.body;
+  if (!skill || !skill.id || !skill.name) {
+    return res.status(400).json({ error: 'Skill must have id and name' });
+  }
+  // Prevent duplicates
+  const existing = dynamicData.curatedSkills.findIndex(s => s.id === skill.id);
+  if (existing >= 0) {
+    dynamicData.curatedSkills[existing] = skill;
+  } else {
+    dynamicData.curatedSkills.push(skill);
+  }
+  saveDynamicData(dynamicData);
+  res.json({ success: true, skills: dynamicData.curatedSkills });
+});
+
+app.post('/api/data/skill-repos', (req, res) => {
+  const repo = req.body;
+  if (!repo || !repo.full_name) {
+    return res.status(400).json({ error: 'Repo must have full_name' });
+  }
+  const existing = dynamicData.skillRepos.findIndex(r => r.full_name === repo.full_name);
+  if (existing >= 0) {
+    dynamicData.skillRepos[existing] = repo;
+  } else {
+    dynamicData.skillRepos.push(repo);
+    // Re-rank
+    dynamicData.skillRepos.sort((a, b) => (b.stargazers_count || 0) - (a.stargazers_count || 0));
+    dynamicData.skillRepos.forEach((r, i) => r.rank = i + 1);
+  }
+  saveDynamicData(dynamicData);
+  res.json({ success: true, repos: dynamicData.skillRepos });
+});
+
+app.post('/api/data/app-repos', (req, res) => {
+  const repo = req.body;
+  if (!repo || !repo.full_name) {
+    return res.status(400).json({ error: 'Repo must have full_name' });
+  }
+  const existing = dynamicData.appRepos.findIndex(r => r.full_name === repo.full_name);
+  if (existing >= 0) {
+    dynamicData.appRepos[existing] = repo;
+  } else {
+    dynamicData.appRepos.push(repo);
+  }
+  saveDynamicData(dynamicData);
+  res.json({ success: true, repos: dynamicData.appRepos });
+});
+
+// Reset to defaults (useful if data gets corrupted)
+app.post('/api/data/reset', (req, res) => {
+  dynamicData = { ...DEFAULT_DATA };
+  saveDynamicData(dynamicData);
+  res.json({ success: true, message: 'Data reset to defaults' });
 });
 
 // Fallback to index.html for SPA
