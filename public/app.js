@@ -45,6 +45,12 @@ const i18n = {
     footerTag:'Convertí skills de IA entre plataformas. Gratuito y open source.',
     footerProduct:'Producto', footerConv:'Convertidor', footerSkills:'Skills', footerRepos:'Repos', footerInstall:'Instalación',
     footerResources:'Recursos',
+    // GitHub
+    ghTitle:'GitHub', ghConnectPrompt:'Conectá tu cuenta de GitHub para ver tus repos y subir skills directamente.',
+    ghConnectBtn:'Conectar con GitHub', ghDisconnect:'Desconectar', ghYourRepos:'Tus Repositorios',
+    ghLoadingRepos:'Cargando repos...', ghUploadSkill:'Subir skill a este repo', ghNoRepos:'No se encontraron repos.',
+    ghUploadSuccess:'¡Skill subido exitosamente!', ghUploadError:'Error al subir skill',
+    ghUploadTo:'Subir a GitHub', ghUploadDesc:'Sube el SKILL.md convertido a cualquier repo tuyo.',
     // Tabs
     tabKimi:'Kimi', tabCursor:'Cursor', tabCodeium:'Codeium', tabClaude:'Claude', tabOther:'Otras',
   },
@@ -93,6 +99,12 @@ const i18n = {
     footerTag:'Convert AI skills across platforms. Free and open source.',
     footerProduct:'Product', footerConv:'Converter', footerSkills:'Skills', footerRepos:'Repos', footerInstall:'Install',
     footerResources:'Resources',
+    // GitHub
+    ghTitle:'GitHub', ghConnectPrompt:'Connect your GitHub account to view your repos and upload skills directly.',
+    ghConnectBtn:'Connect with GitHub', ghDisconnect:'Disconnect', ghYourRepos:'Your Repositories',
+    ghLoadingRepos:'Loading repos...', ghUploadSkill:'Upload skill to this repo', ghNoRepos:'No repos found.',
+    ghUploadSuccess:'Skill uploaded successfully!', ghUploadError:'Error uploading skill',
+    ghUploadTo:'Upload to GitHub', ghUploadDesc:'Upload the converted SKILL.md to any of your repos.',
     // Tabs
     tabKimi:'Kimi', tabCursor:'Cursor', tabCodeium:'Codeium', tabClaude:'Claude', tabOther:'Others',
   }
@@ -796,10 +808,182 @@ async function loadDynamicData() {
   }
 }
 
+// ===================== GITHUB PANEL =====================
+let ghConnected = false;
+let ghUser = null;
+let ghRepos = [];
+let ghUserId = localStorage.getItem('sb_gh_userId') || null;
+
+function toggleGhPanel() {
+  document.getElementById('ghPanel').classList.toggle('visible');
+  document.getElementById('ghBackdrop').classList.toggle('visible');
+  if (document.getElementById('ghPanel').classList.contains('visible') && ghConnected) {
+    loadGhRepos();
+  }
+}
+
+async function connectGitHub() {
+  try {
+    const resp = await fetch('/api/github/login');
+    const data = await resp.json();
+    if (data.url) window.location.href = data.url;
+    else showToast(data.error || 'OAuth not configured', 'error');
+  } catch (e) {
+    showToast('Error connecting to GitHub', 'error');
+  }
+}
+
+async function checkGhStatus() {
+  try {
+    const resp = await fetch(`/api/github/me?userId=${ghUserId || ''}`);
+    const data = await resp.json();
+    const btn = document.getElementById('ghBtn');
+    const btnText = document.getElementById('ghBtnText');
+    if (data.connected && data.user) {
+      ghConnected = true;
+      ghUser = data.user;
+      ghUserId = data.user.id;
+      localStorage.setItem('sb_gh_userId', ghUserId);
+      btn.classList.add('connected');
+      btnText.textContent = '@' + data.user.login;
+      renderGhPanelConnected();
+    } else {
+      ghConnected = false;
+      ghUser = null;
+      btn.classList.remove('connected');
+      btnText.textContent = 'GitHub';
+      renderGhPanelDisconnected();
+    }
+  } catch (e) {
+    renderGhPanelDisconnected();
+  }
+}
+
+function renderGhPanelDisconnected() {
+  document.getElementById('ghPanelContent').innerHTML = `
+    <div class="gh-empty" data-t="ghConnectPrompt">${t('ghConnectPrompt')}</div>
+    <div style="text-align:center;margin-top:12px;">
+      <button class="btn-primary" onclick="connectGitHub()">${t('ghConnectBtn')}</button>
+    </div>
+  `;
+}
+
+function renderGhPanelConnected() {
+  if (!ghUser) return;
+  document.getElementById('ghPanelContent').innerHTML = `
+    <div class="gh-user">
+      <img src="${ghUser.avatar}" alt="${ghUser.login}">
+      <span>@${ghUser.login}</span>
+      <button class="btn-sm" onclick="logoutGitHub()" style="margin-left:auto;font-size:11px;">${t('ghDisconnect')}</button>
+    </div>
+    <div id="ghReposList">
+      <div class="gh-empty"><span class="spinner"></span> ${t('ghLoadingRepos')}</div>
+    </div>
+  `;
+  loadGhRepos();
+}
+
+async function loadGhRepos() {
+  if (!ghUserId) return;
+  try {
+    const resp = await fetch(`/api/github/repos?userId=${ghUserId}`);
+    if (resp.ok) {
+      ghRepos = await resp.json();
+      renderGhRepos();
+    } else throw new Error('Failed');
+  } catch (e) {
+    document.getElementById('ghReposList').innerHTML = `<div class="gh-empty">${t('ghNoRepos')}</div>`;
+  }
+}
+
+function renderGhRepos() {
+  const el = document.getElementById('ghReposList');
+  if (!ghRepos.length) {
+    el.innerHTML = `<div class="gh-empty">${t('ghNoRepos')}</div>`;
+    return;
+  }
+  let html = `<div style="font-size:12px;color:var(--dim);margin-bottom:8px;">${t('ghYourRepos')} (${ghRepos.length})</div>`;
+  for (const r of ghRepos.slice(0, 20)) {
+    html += `
+      <div class="gh-repo-row">
+        <div style="min-width:0;">
+          <a href="${r.html_url}" target="_blank" rel="noopener">${r.full_name}</a>
+          <div style="font-size:11px;color:var(--dim);">${r.description || ''}</div>
+        </div>
+        <button onclick="promptUploadToRepo('${r.full_name.replace(/'/g,"\\'")}')" title="${t('ghUploadSkill')}">⬆</button>
+      </div>
+    `;
+  }
+  el.innerHTML = html;
+}
+
+function promptUploadToRepo(repo) {
+  const content = document.getElementById('output').value;
+  if (!content) { showToast('No hay contenido convertido para subir', 'error'); return; }
+  const target = document.getElementById('targetSelect').value;
+  const filename = AI_CONFIGS[target].file;
+  const skillName = filename.replace(/\.[^.]+$/, '');
+  const message = `Add ${filename} via SkillBridge`;
+
+  // Simple inline prompt
+  const customPath = prompt(`Subir a ${repo}\n\nNombre del archivo:`, filename);
+  if (!customPath) return;
+  const customMsg = prompt('Mensaje del commit:', message);
+  if (!customMsg) return;
+
+  uploadToRepo(repo, customPath, content, customMsg);
+}
+
+async function uploadToRepo(repo, filePath, content, message) {
+  try {
+    const resp = await fetch(`/api/github/upload?userId=${ghUserId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repo, path: filePath, content, message })
+    });
+    const data = await resp.json();
+    if (data.success) {
+      showToast(`${t('ghUploadSuccess')}\n${data.url}`, 'success');
+    } else throw new Error(data.error);
+  } catch (e) {
+    showToast(t('ghUploadError') + ': ' + e.message, 'error');
+  }
+}
+
+async function logoutGitHub() {
+  try {
+    await fetch(`/api/github/logout?userId=${ghUserId}`);
+  } catch (e) {}
+  ghConnected = false;
+  ghUser = null;
+  ghUserId = null;
+  localStorage.removeItem('sb_gh_userId');
+  document.getElementById('ghBtn').classList.remove('connected');
+  document.getElementById('ghBtnText').textContent = 'GitHub';
+  renderGhPanelDisconnected();
+}
+
+// Check for OAuth callback on load
+function handleGhCallback() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('github') === 'connected') {
+    const user = params.get('user');
+    showToast(`GitHub conectado: @${user}`, 'success');
+    // Clean URL
+    window.history.replaceState({}, document.title, window.location.pathname);
+    checkGhStatus();
+  } else if (params.get('github') === 'error') {
+    showToast(`Error: ${params.get('msg')}`, 'error');
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+}
+
 // ===================== INIT =====================
 document.addEventListener('DOMContentLoaded', () => {
   renderLang();
   loadDynamicData();
   renderInstallTabs('kimi');
   onTargetChange();
+  handleGhCallback();
+  checkGhStatus();
 });

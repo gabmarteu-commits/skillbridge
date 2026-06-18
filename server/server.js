@@ -69,6 +69,30 @@ function saveDynamicData(data) {
 
 let dynamicData = loadDynamicData();
 
+// ===== GitHub OAuth State Store =====
+const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || '';
+const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || '';
+const GITHUB_REDIRECT_URI = process.env.GITHUB_REDIRECT_URI || 'https://skillbridge-aqok.onrender.com/api/github/callback';
+
+// In-memory state store for OAuth (non-persistent, OK for demo)
+const oauthStates = new Set();
+
+// User tokens store (keyed by GitHub user ID)
+let userTokens = {};
+function loadUserTokens() {
+  try {
+    const p = path.join(__dirname, 'skillbridge-users.json');
+    if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch (e) {}
+  return {};
+}
+function saveUserTokens() {
+  try {
+    fs.writeFileSync(path.join(__dirname, 'skillbridge-users.json'), JSON.stringify(userTokens, null, 2));
+  } catch (e) {}
+}
+userTokens = loadUserTokens();
+
 // Helpers
 function addConversion(conv) {
   db.conversions.unshift({
@@ -432,6 +456,170 @@ app.post('/api/data/reset', (req, res) => {
   dynamicData = { ...DEFAULT_DATA };
   saveDynamicData(dynamicData);
   res.json({ success: true, message: 'Data reset to defaults' });
+});
+
+// ===== GITHUB OAUTH ROUTES =====
+
+// Step 1: Redirect user to GitHub for authorization
+app.get('/api/github/login', (req, res) => {
+  if (!GITHUB_CLIENT_ID) {
+    return res.status(500).json({ error: 'GitHub OAuth not configured. Set GITHUB_CLIENT_ID env var.' });
+  }
+  const state = require('crypto').randomBytes(16).toString('hex');
+  oauthStates.add(state);
+  const scope = 'repo read:user read:org';
+  const url = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(GITHUB_REDIRECT_URI)}&scope=${encodeURIComponent(scope)}&state=${state}`;
+  res.json({ url });
+});
+
+// Step 2: GitHub redirects back here with code
+app.get('/api/github/callback', async (req, res) => {
+  const { code, state } = req.query;
+  if (!code) return res.status(400).json({ error: 'Missing code' });
+  if (!oauthStates.has(state)) return res.status(400).json({ error: 'Invalid state' });
+  oauthStates.delete(state);
+
+  try {
+    // Exchange code for access token
+    const tokenResp = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        client_id: GITHUB_CLIENT_ID,
+        client_secret: GITHUB_CLIENT_SECRET,
+        code,
+        redirect_uri: GITHUB_REDIRECT_URI
+      })
+    });
+    const tokenData = await tokenResp.json();
+    if (tokenData.error) throw new Error(tokenData.error_description);
+
+    // Fetch user info
+    const userResp = await fetch('https://api.github.com/user', {
+      headers: { Authorization: `token ${tokenData.access_token}` }
+    });
+    const user = await userResp.json();
+
+    // Store token
+    userTokens[user.id] = {
+      id: user.id,
+      login: user.login,
+      avatar: user.avatar_url,
+      token: tokenData.access_token,
+      connectedAt: new Date().toISOString()
+    };
+    saveUserTokens();
+
+    // Redirect back to frontend with success
+    res.redirect(`/?github=connected&user=${encodeURIComponent(user.login)}`);
+  } catch (e) {
+    res.redirect(`/?github=error&msg=${encodeURIComponent(e.message)}`);
+  }
+});
+
+// Step 3: Check who is logged in
+app.get('/api/github/me', (req, res) => {
+  // Simple approach: check query param for user ID (for demo)
+  // In production you'd use sessions/JWT cookies
+  const userId = req.query.userId;
+  if (userId && userTokens[userId]) {
+    const u = userTokens[userId];
+    return res.json({
+      connected: true,
+      user: { id: u.id, login: u.login, avatar: u.avatar, connectedAt: u.connectedAt }
+    });
+  }
+  // Check if GitHub OAuth is configured
+  res.json({
+    connected: false,
+    configured: !!GITHUB_CLIENT_ID,
+    setupUrl: 'https://github.com/settings/applications/new'
+  });
+});
+
+// Step 4: Disconnect
+app.get('/api/github/logout', (req, res) => {
+  const userId = req.query.userId;
+  if (userId && userTokens[userId]) {
+    delete userTokens[userId];
+    saveUserTokens();
+  }
+  res.json({ success: true });
+});
+
+// Step 5: List user's repos
+app.get('/api/github/repos', async (req, res) => {
+  const userId = req.query.userId;
+  if (!userId || !userTokens[userId]) return res.status(401).json({ error: 'Not connected' });
+
+  try {
+    const page = req.query.page || 1;
+    const resp = await fetch(`https://api.github.com/user/repos?per_page=30&page=${page}&sort=updated`, {
+      headers: { Authorization: `token ${userTokens[userId].token}` }
+    });
+    const repos = await resp.json();
+    res.json(repos.map(r => ({
+      full_name: r.full_name,
+      description: r.description,
+      stargazers_count: r.stargazers_count,
+      forks_count: r.forks_count,
+      html_url: r.html_url,
+      private: r.private,
+      updated_at: r.updated_at
+    })));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Step 6: Upload a file to a repo
+app.post('/api/github/upload', async (req, res) => {
+  const userId = req.query.userId;
+  if (!userId || !userTokens[userId]) return res.status(401).json({ error: 'Not connected' });
+
+  const { repo, path: filePath, content, message } = req.body;
+  if (!repo || !filePath || !content) return res.status(400).json({ error: 'Missing repo, path, or content' });
+
+  try {
+    // Check if file exists (to get SHA for update)
+    let sha = null;
+    try {
+      const existing = await fetch(`https://api.github.com/repos/${repo}/contents/${filePath}`, {
+        headers: { Authorization: `token ${userTokens[userId].token}` }
+      });
+      if (existing.ok) {
+        const data = await existing.json();
+        sha = data.sha;
+      }
+    } catch (e) { /* file doesn't exist, that's fine */ }
+
+    // Create or update file
+    const body = {
+      message: message || `Add ${filePath} via SkillBridge`,
+      content: Buffer.from(content).toString('base64'),
+      ...(sha ? { sha } : {})
+    };
+
+    const resp = await fetch(`https://api.github.com/repos/${repo}/contents/${filePath}`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `token ${userTokens[userId].token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+
+    const result = await resp.json();
+    if (!resp.ok) throw new Error(result.message);
+
+    res.json({
+      success: true,
+      url: result.content?.html_url,
+      sha: result.content?.sha
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Fallback to index.html for SPA
